@@ -12,6 +12,12 @@ namespace justcad::core::detail {
 
 std::string FormatAssertMessage();
 
+// Not constexpr on purpose: it keeps constant conditions such as
+// JUSTCAD_ASSERT(false, "unreachable") from triggering MSVC's C4127.
+[[nodiscard]] inline bool AssertCondition(bool value) noexcept {
+    return value;
+}
+
 template <typename... Args>
 std::string FormatAssertMessage(std::format_string<Args...> fmt, Args&&... args) {
     return std::format(fmt, std::forward<Args>(args)...);
@@ -31,7 +37,7 @@ std::string FormatAssertMessage(std::format_string<Args...> fmt, Args&&... args)
 #else
 #define JUSTCAD_ASSERT(cond, ...)                                                       \
     do {                                                                                \
-        if (!(cond)) {                                                                  \
+        if (!::justcad::core::detail::AssertCondition(static_cast<bool>(cond))) {      \
             ::justcad::core::detail::AssertFail(                                        \
                 #cond, ::justcad::core::detail::FormatAssertMessage(__VA_ARGS__),       \
                 std::source_location::current());                                       \

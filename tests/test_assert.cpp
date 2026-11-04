@@ -12,3 +12,7 @@ TEST(AssertDeathTest, AssertFalseConditionAbortsWithFormattedMessage) {
     EXPECT_DEBUG_DEATH(JUSTCAD_ASSERT(1 > 2, "expected {} got {}", 1, 2),
                        "assertion failed: 1 > 2: expected 1 got 2");
 }
+
+TEST(AssertDeathTest, AssertConstantFalseAbortsWithMessage) {
+    EXPECT_DEBUG_DEATH(JUSTCAD_ASSERT(false, "unreachable"), "assertion failed: false: unreachable");
+}
