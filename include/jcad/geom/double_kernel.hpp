@@ -1,25 +1,27 @@
 #pragma once
 
-#include "justcad/geom/point2.hpp"
-#include "justcad/geom/sign.hpp"
-#include "justcad/geom/vec2.hpp"
+#include "geom/point2.hpp"
+#include "geom/sign.hpp"
+#include "geom/vec2.hpp"
 
-namespace justcad::geom {
+namespace jcad::geom
+{
 
-/**
- * Floating-point kernel with one global distance tolerance.
- *
- * The tolerance is a distance in the plane: two points are equal when they are
- * at most Tolerance() apart, and three points are collinear when c is at most
- * Tolerance() away from the line a->b, regardless of how long a->b is.
- */
-class DoubleKernel {
-public:
+  /**
+   * Floating-point kernel with one global distance tolerance.
+   *
+   * The tolerance is a distance in the plane: two points are equal when they are
+   * at most Tolerance() apart, and three points are collinear when c is at most
+   * Tolerance() away from the line a->b, regardless of how long a->b is.
+   */
+  class DoubleKernel
+  {
+  public:
+    static constexpr double DEFAULT_TOLERANCE{ 1e-9 };
+
     using Scalar = double;
     using Point2 = geom::Point2<double>;
     using Vec2 = geom::Vec2<double>;
-
-    static constexpr double DEFAULT_TOLERANCE{1e-9};
 
     [[nodiscard]] static double Tolerance() noexcept;
 
@@ -32,8 +34,8 @@ public:
     [[nodiscard]] static Sign CompareXY(Point2 a, Point2 b) noexcept;
     [[nodiscard]] static bool OnSegment(Point2 a, Point2 b, Point2 c) noexcept;
 
-private:
+  private:
     static double s_tolerance;
-};
+  };
 
-}  // namespace justcad::geom
+} // namespace jcad::geom

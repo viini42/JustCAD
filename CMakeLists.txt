@@ -10,25 +10,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(JUSTCAD_BUILD_TESTS "Build the unit tests" ON)
-option(JUSTCAD_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+option(JCAD_BUILD_TESTS "Build the unit tests" ON)
+option(JCAD_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 include(cmake/CompilationOptions.cmake)
 
-# Layers, each one a library; dependencies only point downwards:
-#   Core  : assertions and other utilities shared by every layer
-#   Geom  : pure geometry + numeric kernel (knows nothing about topology)
-#   Topo  : half-edge data structure (knows nothing about geometry)
-#   Euler : low- and high-level Euler operators   -> Topo, Geom
-#   Model : geometric model (public API)          -> Euler, Geom
-#   App   : SDL3 + Dear ImGui UI                  -> Model   (milestone M4)
-add_subdirectory(src/core)
-add_subdirectory(src/geom)
-add_subdirectory(src/topo)
-add_subdirectory(src/euler)
-add_subdirectory(src/model)
+add_subdirectory(src)
 
-if(JUSTCAD_BUILD_TESTS)
+if(JCAD_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()

@@ -1,0 +1,37 @@
+# One library per layer; dependencies only point downwards:
+#   Core  : assertions and other utilities shared by every layer
+#   Geom  : pure geometry + numeric kernel (knows nothing about topology)
+#   Topo  : half-edge data structure (knows nothing about geometry)
+#   Euler : low- and high-level Euler operators   -> Topo, Geom   (milestone M1)
+#   Model : geometric model (public API)          -> Euler, Geom  (milestone M3)
+#   App   : SDL3 + Dear ImGui UI                  -> Model        (milestone M4)
+# Sources are listed explicitly; do not glob.
+set(JCAD_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/jcad)
+
+add_library(JustCadCore STATIC
+    assert.cpp)
+add_library(JustCad::Core ALIAS JustCadCore)
+target_include_directories(JustCadCore PUBLIC ${JCAD_INCLUDE_DIR})
+target_compile_features(JustCadCore PUBLIC cxx_std_23)
+target_link_libraries(JustCadCore PRIVATE JustCad::CompilationOptions)
+
+add_library(JustCadGeom STATIC
+    double_kernel.cpp
+    scoped_tolerance.cpp)
+add_library(JustCad::Geom ALIAS JustCadGeom)
+target_link_libraries(JustCadGeom
+    PUBLIC JustCad::Core
+    PRIVATE JustCad::CompilationOptions)
+
+# Header-only for now: strong IDs. Topology does not depend on Geom.
+add_library(JustCadTopo INTERFACE)
+add_library(JustCad::Topo ALIAS JustCadTopo)
+target_link_libraries(JustCadTopo INTERFACE JustCad::Core)
+
+add_library(JustCadEuler INTERFACE)
+add_library(JustCad::Euler ALIAS JustCadEuler)
+target_link_libraries(JustCadEuler INTERFACE JustCad::Topo JustCad::Geom)
+
+add_library(JustCadModel INTERFACE)
+add_library(JustCad::Model ALIAS JustCadModel)
+target_link_libraries(JustCadModel INTERFACE JustCad::Euler JustCad::Geom)

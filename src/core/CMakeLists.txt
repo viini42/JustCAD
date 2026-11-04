@@ -1,5 +1,0 @@
-add_library(JustCadCore STATIC assert.cpp)
-add_library(JustCad::Core ALIAS JustCadCore)
-target_include_directories(JustCadCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_features(JustCadCore PUBLIC cxx_std_23)
-target_link_libraries(JustCadCore PRIVATE JustCad::CompilationOptions)

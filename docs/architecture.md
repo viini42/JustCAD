@@ -149,16 +149,18 @@ A thin layer above the model: `Entity { id, kind (Rect, Circle, Polyline...), pa
 ```
 JustCAD/
   CMakeLists.txt
-  src/
+  include/jcad/
+    core/      assert.hpp and shared utilities
     geom/      Point2, Vec2, BBox, kernel, Curve (variant), intersections
     topo/      half-edge data structure, ids/pools, Validate()
-    euler/     low/ (MVFS, MEV, MEF, KEMR + inverses)  high/ (AddEdge, SplitEdge...)
+    euler/     low-level (MVFS, MEV, MEF, KEMR + inverses) and high-level (AddEdge, SplitEdge...) operators
     model/     GeometricModel (public API), entities, undo/redo
     app/       window, rendering, drawing tools   (depends on model/ only)
-  tests/       one test file per source file, one executable per layer (GoogleTest)
+  src/         flat: <name>.cpp, listed per layer library in src/CMakeLists.txt
+  tests/       flat: test_<name>.cpp, one per source file, one executable per layer (GoogleTest)
 ```
 
-Each folder is a separate CMake library with explicit dependencies, so the build itself rejects layer violations. Naming conventions are in [style.md](style.md).
+Each layer is a separate CMake library (`JustCad::Core`, `JustCad::Geom`, ...) with explicit dependencies. Headers share one include root (`include/jcad`), so the rule that a lower layer never includes a higher one is checked in review rather than by the build. Naming conventions are in [style.md](style.md).
 
 ## 10. Roadmap
 

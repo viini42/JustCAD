@@ -6,6 +6,14 @@ on:
   pull_request:
 
 jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        run: clang-format-18 --dry-run --Werror include/jcad/*/*.hpp src/*.cpp tests/*.cpp
+
   build:
     name: ${{ matrix.os }} / ${{ matrix.cxx }}
     runs-on: ${{ matrix.os }}
