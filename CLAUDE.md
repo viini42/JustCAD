@@ -17,7 +17,7 @@ All code, comments, docs, commit messages and PR text are in English.
 ## Definition of Done
 
 1. Builds with warnings as errors:
-   `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DJUSTCAD_WARNINGS_AS_ERRORS=ON && cmake --build build --parallel`
+   `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DJCAD_WARNINGS_AS_ERRORS=ON && cmake --build build --parallel`
 2. All tests pass: `ctest --test-dir build --output-on-failure`
 3. Formatting is clean (clang-format 18):
    `clang-format --dry-run --Werror include/jcad/*/*.hpp src/*.cpp tests/*.cpp`

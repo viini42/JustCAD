@@ -31,9 +31,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.cxx }}" = "cl" ]; then
-            cmake -S . -B build -DJUSTCAD_WARNINGS_AS_ERRORS=ON
+            cmake -S . -B build -DJCAD_WARNINGS_AS_ERRORS=ON
           else
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DJUSTCAD_WARNINGS_AS_ERRORS=ON
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DJCAD_WARNINGS_AS_ERRORS=ON
           fi
 
       - name: Build
