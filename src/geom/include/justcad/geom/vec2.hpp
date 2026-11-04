@@ -4,43 +4,71 @@
 
 namespace justcad::geom {
 
-/// Vetor livre 2D (direção e magnitude).
-template <class T>
+/** Free 2D vector (direction and magnitude). */
+template <typename T>
 struct Vec2 {
     T x{};
     T y{};
 
-    constexpr Vec2 operator+(const Vec2& o) const { return {x + o.x, y + o.y}; }
-    constexpr Vec2 operator-(const Vec2& o) const { return {x - o.x, y - o.y}; }
+    constexpr Vec2 operator+(const Vec2& other) const { return {x + other.x, y + other.y}; }
+    constexpr Vec2 operator-(const Vec2& other) const { return {x - other.x, y - other.y}; }
     constexpr Vec2 operator-() const { return {-x, -y}; }
-    constexpr Vec2 operator*(const T& s) const { return {x * s, y * s}; }
-    constexpr Vec2 operator/(const T& s) const { return {x / s, y / s}; }
-    constexpr Vec2& operator+=(const Vec2& o) { x += o.x; y += o.y; return *this; }
-    constexpr Vec2& operator-=(const Vec2& o) { x -= o.x; y -= o.y; return *this; }
-    constexpr Vec2& operator*=(const T& s) { x *= s; y *= s; return *this; }
+    constexpr Vec2 operator*(const T& scale) const { return {x * scale, y * scale}; }
+    constexpr Vec2 operator/(const T& scale) const { return {x / scale, y / scale}; }
+
+    constexpr Vec2& operator+=(const Vec2& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+
+    constexpr Vec2& operator-=(const Vec2& other) {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
+
+    constexpr Vec2& operator*=(const T& scale) {
+        x *= scale;
+        y *= scale;
+        return *this;
+    }
 
     constexpr bool operator==(const Vec2&) const = default;
 };
 
-template <class T>
-constexpr Vec2<T> operator*(const T& s, const Vec2<T>& v) { return v * s; }
+template <typename T>
+constexpr Vec2<T> operator*(const T& scale, const Vec2<T>& v) {
+    return v * scale;
+}
 
-template <class T>
-[[nodiscard]] constexpr T dot(const Vec2<T>& a, const Vec2<T>& b) { return a.x * b.x + a.y * b.y; }
+template <typename T>
+[[nodiscard]] constexpr T Dot(const Vec2<T>& a, const Vec2<T>& b) {
+    return a.x * b.x + a.y * b.y;
+}
 
-/// Componente z do produto vetorial (área orientada do paralelogramo).
-template <class T>
-[[nodiscard]] constexpr T cross(const Vec2<T>& a, const Vec2<T>& b) { return a.x * b.y - a.y * b.x; }
+/** z component of the cross product: the signed area of the parallelogram (a, b). */
+template <typename T>
+[[nodiscard]] constexpr T Cross(const Vec2<T>& a, const Vec2<T>& b) {
+    return a.x * b.y - a.y * b.x;
+}
 
-template <class T>
-[[nodiscard]] constexpr T squaredLength(const Vec2<T>& v) { return dot(v, v); }
+template <typename T>
+[[nodiscard]] constexpr T SquaredLength(const Vec2<T>& v) {
+    return Dot(v, v);
+}
 
-/// Só faz sentido para escalares com raiz quadrada (não para racionais exatos).
-template <class T>
-[[nodiscard]] T length(const Vec2<T>& v) { using std::sqrt; return sqrt(squaredLength(v)); }
+/** Only for scalars that have a square root (not for exact rationals). */
+template <typename T>
+[[nodiscard]] T Length(const Vec2<T>& v) {
+    using std::sqrt;
+    return sqrt(SquaredLength(v));
+}
 
-/// Vetor perpendicular (rotação de +90 graus).
-template <class T>
-[[nodiscard]] constexpr Vec2<T> perp(const Vec2<T>& v) { return {-v.y, v.x}; }
+/** The vector rotated by +90 degrees. */
+template <typename T>
+[[nodiscard]] constexpr Vec2<T> Perp(const Vec2<T>& v) {
+    return {-v.y, v.x};
+}
 
 }  // namespace justcad::geom

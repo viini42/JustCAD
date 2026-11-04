@@ -1,5 +1,5 @@
-# Operadores de Euler: low/ (MVFS, MEV, MEF, KEMR e inversos) e high/ (addEdge,
-# splitEdge, removeEdge...). Implementação a partir do marco M1.
-add_library(justcad_euler INTERFACE)
-add_library(justcad::euler ALIAS justcad_euler)
-target_link_libraries(justcad_euler INTERFACE justcad::topo justcad::geom)
+# Euler operators: low/ (MVFS, MEV, MEF, KEMR and inverses) and high/ (AddEdge,
+# SplitEdge, RemoveEdge...). Implemented from milestone M1 on.
+add_library(JustCadEuler INTERFACE)
+add_library(JustCad::Euler ALIAS JustCadEuler)
+target_link_libraries(JustCadEuler INTERFACE JustCad::Topo JustCad::Geom)

@@ -1,24 +1,31 @@
 include(FetchContent)
-FetchContent_Declare(Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG v3.7.1
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_Declare(GoogleTest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.2
     GIT_SHALLOW TRUE
-    FIND_PACKAGE_ARGS 3)
-FetchContent_MakeAvailable(Catch2)
-include(Catch)
+    SYSTEM
+    FIND_PACKAGE_ARGS NAMES GTest)
+FetchContent_MakeAvailable(GoogleTest)
+include(GoogleTest)
 
-# Um executável por camada, para que cada teste só enxergue a sua camada.
-function(justcad_add_test name)
+# One executable per layer, so each test only sees its own layer.
+function(JustCadAddTests name)
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
     add_executable(${name} ${ARG_SOURCES})
-    target_link_libraries(${name} PRIVATE ${ARG_LIBS} justcad::warnings Catch2::Catch2WithMain)
-    catch_discover_tests(${name})
+    target_link_libraries(${name} PRIVATE ${ARG_LIBS} JustCad::CompilationOptions GTest::gtest_main)
+    gtest_discover_tests(${name})
 endfunction()
 
-justcad_add_test(test_geom
-    SOURCES geom/test_vec_point.cpp geom/test_bbox.cpp geom/test_double_kernel.cpp
-    LIBS justcad::geom)
+JustCadAddTests(CoreTests
+    SOURCES test_assert.cpp
+    LIBS JustCad::Core)
 
-justcad_add_test(test_topo
-    SOURCES topo/test_ids.cpp
-    LIBS justcad::topo)
+JustCadAddTests(GeomTests
+    SOURCES test_vec2.cpp test_point2.cpp test_bbox.cpp test_double_kernel.cpp test_scoped_tolerance.cpp
+    LIBS JustCad::Geom)
+
+JustCadAddTests(TopoTests
+    SOURCES test_id.cpp
+    LIBS JustCad::Topo)

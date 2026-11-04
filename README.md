@@ -1,27 +1,29 @@
 # JustCAD
 
-Modelador 2D para desenhar primitivas geométricas (pontos, linhas, poligonais,
-curvas Bézier) e regiões fechadas (retângulos, polígonos regulares, círculos,
-elipses e regiões delimitadas por primitivas).
+A 2D modeler for drawing geometric primitives (points, lines, polylines, Bézier
+curves) and closed regions (rectangles, regular polygons, circles, ellipses and
+regions bounded by primitives).
 
-Internamente, o modelo é uma estrutura topológica **half-edge** manipulada
-apenas por **operadores de Euler**, organizada em camadas com dependências
-estritamente descendentes. Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
+Internally the model is a **half-edge** topological data structure that is
+modified only through **Euler operators**, organized in layers with strictly
+downward dependencies. See [docs/architecture.md](docs/architecture.md) for the
+design and [docs/style.md](docs/style.md) for naming and code rules.
 
-## Camadas
+## Layers
 
-| Biblioteca | Pasta | Depende de | Conteúdo |
+| Library | Folder | Depends on | Contents |
 |---|---|---|---|
-| `justcad::geom` | `src/geom` | nada | Point2, Vec2, BBox, kernel numérico (`DoubleKernel`) e, depois, curvas |
-| `justcad::topo` | `src/topo` | nada | IDs fortes e estrutura half-edge |
-| `justcad::euler` | `src/euler` | topo, geom | operadores de Euler de baixo e alto nível |
-| `justcad::model` | `src/model` | euler, geom | API pública do modelo geométrico |
-| app | `src/app` (M4) | model | UI com SDL3 + Dear ImGui |
+| `JustCad::Core` | `src/core` | — | `JUSTCAD_ASSERT` and shared utilities |
+| `JustCad::Geom` | `src/geom` | Core | Point2, Vec2, BBox, numeric kernel (`DoubleKernel`), later curves |
+| `JustCad::Topo` | `src/topo` | Core | strong IDs and the half-edge data structure |
+| `JustCad::Euler` | `src/euler` | Topo, Geom | low- and high-level Euler operators |
+| `JustCad::Model` | `src/model` | Euler, Geom | public API of the geometric model |
+| App | `src/app` (M4) | Model | UI with SDL3 + Dear ImGui |
 
-## Compilar e testar
+## Build and test
 
-Requer CMake 3.25+ e um compilador C++23 (GCC 13, Clang 18 ou MSVC 19.38+).
-O Catch2 é baixado automaticamente via FetchContent.
+Requires CMake 3.25+ and a C++23 compiler (GCC 13, Clang 18 or MSVC 19.38+).
+GoogleTest is fetched automatically through FetchContent.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
@@ -31,10 +33,10 @@ ctest --test-dir build --output-on-failure
 
 ## Roadmap
 
-- **M0** esqueleto, CI, geometria básica e kernel numérico ← *atual*
-- **M1** half-edge, operadores de Euler de baixo nível, `validate()`
-- **M2** operadores de alto nível, undo/redo por transação
-- **M3** modelo geométrico com retas e detecção automática de regiões
-- **M4** UI mínima (SDL3 + Dear ImGui)
-- **M5** Bézier de grau arbitrário, arcos, círculos, elipses
-- **M6** persistência e import/export
+- **M0** skeleton, CI, basic geometry and numeric kernel ← *current*
+- **M1** half-edge structure, low-level Euler operators, `Validate()`
+- **M2** high-level operators, transactional undo/redo
+- **M3** geometric model with straight edges and automatic region detection
+- **M4** minimal UI (SDL3 + Dear ImGui)
+- **M5** arbitrary-degree Bézier, arcs, circles, ellipses
+- **M6** persistence and import/export

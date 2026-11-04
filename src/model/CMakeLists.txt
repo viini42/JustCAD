@@ -1,4 +1,4 @@
-# Modelo geométrico (API pública usada pela UI). Implementação a partir do marco M3.
-add_library(justcad_model INTERFACE)
-add_library(justcad::model ALIAS justcad_model)
-target_link_libraries(justcad_model INTERFACE justcad::euler justcad::geom)
+# Geometric model (public API used by the UI). Implemented from milestone M3 on.
+add_library(JustCadModel INTERFACE)
+add_library(JustCad::Model ALIAS JustCadModel)
+target_link_libraries(JustCadModel INTERFACE JustCad::Euler JustCad::Geom)

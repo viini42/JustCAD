@@ -6,35 +6,36 @@
 
 namespace justcad::geom {
 
-/// Kernel numérico: concentra o tipo escalar e os *predicados* geométricos.
-///
-/// As camadas acima (euler/high, model) são parametrizadas por um Kernel, de
-/// modo que trocar `double` com tolerância por aritmética exata (ou filtrada)
-/// seja só trocar o tipo. Para isso valer, toda decisão topológica (lado de
-/// uma reta, coincidência de pontos, ordenação) deve passar por estes
-/// predicados, e nunca por comparações soltas com epsilon.
-///
-/// Construções (ponto de interseção, ponto em t) ficam fora do kernel: num
-/// kernel exato elas podem ser caras ou não representáveis.
-template <class K>
-concept Kernel =
-    requires {
-        typename K::Scalar;
-        typename K::Point2;
-        typename K::Vec2;
-    } &&
-    requires(const typename K::Point2& a, const typename K::Point2& b,
-             const typename K::Point2& c, const typename K::Scalar& s) {
-        /// Sinal de um escalar (Zero dentro da tolerância, se houver).
-        { K::sign(s) } -> std::same_as<Sign>;
-        /// Positive: c à esquerda de a->b; Negative: à direita; Zero: colinear.
-        { K::orientation(a, b, c) } -> std::same_as<Sign>;
-        /// Pontos coincidentes.
-        { K::equal(a, b) } -> std::same_as<bool>;
-        /// Ordem lexicográfica (x, depois y).
-        { K::compareXY(a, b) } -> std::same_as<Sign>;
-        /// c está sobre o segmento fechado [a, b].
-        { K::onSegment(a, b, c) } -> std::same_as<bool>;
-    };
+/**
+ * Numeric kernel: the scalar type plus the geometric *predicates*.
+ *
+ * Upper layers are templated on a kernel so that `double` with a tolerance can
+ * later be replaced by exact (or filtered) arithmetic just by switching types.
+ * For that to hold, every topological decision (side of a line, coincident
+ * points, ordering) must go through these predicates, never through ad hoc
+ * epsilon comparisons.
+ *
+ * Constructions (intersection points, point at t) stay outside the kernel: with
+ * exact arithmetic they can be expensive or not representable.
+ *
+ * - SignOf(s): sign of a scalar (ZERO within the tolerance, if any).
+ * - Orientation(a, b, c): POSITIVE if c is left of a->b, NEGATIVE if right, ZERO if collinear.
+ * - Equal(a, b): coincident points.
+ * - CompareXY(a, b): lexicographic order, x first.
+ * - OnSegment(a, b, c): c lies on the closed segment [a, b].
+ */
+template <typename K>
+concept kernel = requires {
+    typename K::Scalar;
+    typename K::Point2;
+    typename K::Vec2;
+} && requires(const typename K::Point2& a, const typename K::Point2& b,
+              const typename K::Point2& c, const typename K::Scalar& s) {
+    { K::SignOf(s) } -> std::same_as<Sign>;
+    { K::Orientation(a, b, c) } -> std::same_as<Sign>;
+    { K::Equal(a, b) } -> std::same_as<bool>;
+    { K::CompareXY(a, b) } -> std::same_as<Sign>;
+    { K::OnSegment(a, b, c) } -> std::same_as<bool>;
+};
 
 }  // namespace justcad::geom

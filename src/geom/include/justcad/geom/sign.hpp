@@ -2,13 +2,12 @@
 
 namespace justcad::geom {
 
-/// Resultado de um predicado geométrico. Toda decisão topológica deve ser
-/// tomada a partir de um Sign devolvido pelo kernel, nunca comparando
-/// escalares diretamente com um epsilon.
-enum class Sign : int { Negative = -1, Zero = 0, Positive = 1 };
+/** Result of a geometric predicate. Topological decisions are taken from a Sign
+ *  returned by the kernel, never by comparing scalars against an epsilon. */
+enum class Sign : int { NEGATIVE = -1, ZERO = 0, POSITIVE = 1 };
 
-[[nodiscard]] constexpr Sign operator-(Sign s) noexcept {
-    return static_cast<Sign>(-static_cast<int>(s));
+[[nodiscard]] constexpr Sign operator-(Sign sign) noexcept {
+    return static_cast<Sign>(-static_cast<int>(sign));
 }
 
 }  // namespace justcad::geom
