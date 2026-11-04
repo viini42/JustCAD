@@ -1,7 +1,7 @@
 # JustCAD
 
 2D modeler on a half-edge topology driven by Euler operators. Design: `docs/architecture.md`.
-Naming and code rules: `docs/style.md` (read before writing code). New files: `.claude/skills/cpp-new-file`.
+Naming and code rules: `docs/style.md` (read before writing code). New files: `.claude/skills/cpp-new-file`. Commits and branches: `.claude/skills/git-commit`.
 
 All code, comments, docs, commit messages and PR text are in English.
 
