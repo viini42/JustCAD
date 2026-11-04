@@ -16,10 +16,9 @@ All code, comments, docs, commit messages and PR text are in English.
 
 ## Definition of Done
 
-1. Builds with warnings as errors:
-   `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DJCAD_WARNINGS_AS_ERRORS=ON && cmake --build build --parallel`
-2. All tests pass: `ctest --test-dir build --output-on-failure`
-3. Formatting is clean (clang-format 18):
+1. Configure, build (Debug, warnings as errors) and run all tests: `cmake --workflow --preset dev`.
+   Use `--preset release` to also check the Release build (asserts compiled out).
+2. Formatting is clean (clang-format 18):
    `clang-format --dry-run --Werror include/jcad/*/*.hpp src/*.cpp tests/*.cpp`
-4. Every new source file has its `tests/test_<name>.cpp`.
-5. Docs updated when a decision or public API changes.
+3. Every new source file has its `tests/test_<name>.cpp`.
+4. Docs updated when a decision or public API changes.
