@@ -24,6 +24,7 @@ JustCadAddTests(CoreTests
 
 JustCadAddTests(GeomTests
     SOURCES test_vec2.cpp test_point2.cpp test_bbox.cpp test_double_kernel.cpp test_scoped_tolerance.cpp
+        test_polygon.cpp test_segment_crossing.cpp
     LIBS JustCad::Geom)
 
 JustCadAddTests(TopoTests
