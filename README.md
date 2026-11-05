@@ -26,7 +26,7 @@ Headers live in `include/jcad/<layer>/`, sources in `src/` and tests in `tests/`
 
 ## Build and test
 
-Requires CMake 3.25+ and a C++23 compiler (GCC 13, Clang 18 or MSVC 19.38+).
+Requires CMake 3.25+ and a C++23 compiler (GCC 13, Clang 18 with libc++, or MSVC 19.38+).
 GoogleTest is fetched automatically through FetchContent.
 
 ```sh
@@ -36,8 +36,8 @@ cmake --workflow --preset release   # same in Release
 
 ## Roadmap
 
-- **M0** skeleton, CI, basic geometry and numeric kernel ← *current*
-- **M1** half-edge structure, low-level Euler operators, `Validate()`
+- **M0** skeleton, CI, basic geometry and numeric kernel
+- **M1** half-edge structure, low-level Euler operators, `Validate()` ← *current*
 - **M2** high-level operators, transactional undo/redo
 - **M3** geometric model with straight edges and automatic region detection
 - **M4** minimal UI (SDL3 + Dear ImGui)
