@@ -5,6 +5,7 @@
 #include "geom/sign.hpp"
 #include "geom/vec2.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -52,10 +53,16 @@ namespace jcad::geom
       // Half-open rule on y, so a vertex at p's height is counted once.
       const bool a_below{ a.y <= p.y };
       const bool b_below{ b.y <= p.y };
-      if (a_below && !b_below && K::Orientation(a, b, p) == Sign::POSITIVE)
-        ++winding;
-      if (!a_below && b_below && K::Orientation(a, b, p) == Sign::NEGATIVE)
-        --winding;
+      if (a_below == b_below)
+        continue;
+      // The edge crosses p's height; count it when it does so east of p. A nearly
+      // horizontal edge can be collinear with p within the tolerance: p is then
+      // on the edge's line but off the edge, and the crossing is east of p when
+      // the whole edge is.
+      const Sign side{ K::Orientation(a, b, p) };
+      const Sign east{ a_below ? Sign::POSITIVE : Sign::NEGATIVE };
+      if (side == east || (side == Sign::ZERO && p.x < std::min(a.x, b.x)))
+        winding += a_below ? 1 : -1;
     }
     return winding != 0 ? PointLocation::INSIDE : PointLocation::OUTSIDE;
   }

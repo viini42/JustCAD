@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/tool.hpp"
+#include "geom/curve.hpp"
 #include "model/geometric_model.hpp"
 #include "topo/id.hpp"
 
@@ -19,6 +20,9 @@ namespace jcad::app
    * - POLYLINE: one click per vertex; Finish() keeps it open, clicking its first
    *   vertex again closes it.
    * - POLYGON: center, then a vertex (sets radius and rotation).
+   * - CIRCLE: center, then a point on it. ELLIPSE: center, then a corner of its box.
+   * - ARC: start, a point it passes through, end.
+   * - BEZIER: one click per control point (any degree); Finish() adds it.
    * - SELECT: picks the nearest vertex, else the nearest edge, within the pick radius.
    */
   class Editor
@@ -87,6 +91,8 @@ namespace jcad::app
     [[nodiscard]] std::optional<topo::VertexId> NearestVertex(Point2 world) const;
     [[nodiscard]] std::optional<topo::EdgeId> NearestEdge(Point2 world) const;
     [[nodiscard]] std::vector<Point2> RegularPolygonPoints(Point2 center, Point2 corner) const;
+    /** The curve the current tool makes from the pending points plus `last`. */
+    [[nodiscard]] std::optional<geom::Curve> ToolCurve(Point2 last) const;
 
     model::GeometricModel m_model;
     Tool m_tool{ Tool::SELECT };

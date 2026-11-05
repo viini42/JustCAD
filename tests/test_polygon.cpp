@@ -37,3 +37,12 @@ TEST(Polygon, LocatePointAtVertexHeightCountsOnce)
   EXPECT_EQ(LocatePoint<DoubleKernel>(diamond, Point2d{ 1.0, 1.0 }), PointLocation::INSIDE);
   EXPECT_EQ(LocatePoint<DoubleKernel>(diamond, Point2d{ -1.0, 1.0 }), PointLocation::OUTSIDE);
 }
+
+TEST(Polygon, LocatePointIgnoresNearlyHorizontalEdgeWestOfPoint)
+{
+  // The bottom edge rises by less than the tolerance, so the kernel calls the
+  // point collinear with it; the point is still clearly outside, to the west.
+  const std::vector<Point2d> polygon{ { 2.0, 3.0 + 1e-10 }, { 4.0, 3.0 }, { 3.0, 5.0 } };
+  EXPECT_EQ(LocatePoint<DoubleKernel>(polygon, Point2d{ 0.0, 3.0 }), PointLocation::OUTSIDE);
+  EXPECT_EQ(LocatePoint<DoubleKernel>(polygon, Point2d{ 3.0, 4.0 }), PointLocation::INSIDE);
+}

@@ -14,15 +14,6 @@ namespace
   using Point2 = jcad::app::Editor::Point2;
   using Kernel = jcad::model::GeometricModel::Kernel;
 
-  double DistanceToSegment(Point2 p, Point2 a, Point2 b)
-  {
-    const auto ab{ b - a };
-    const double length_squared{ SquaredLength(ab) };
-    const double t{ length_squared > 0.0 ? std::clamp(Dot(p - a, ab) / length_squared, 0.0, 1.0)
-                                         : 0.0 };
-    return Length(p - (a + ab * t));
-  }
-
   double RoundTo(double value, double step)
   {
     return std::round(value / step) * step;
@@ -93,6 +84,11 @@ void jcad::app::Editor::Click(Point2 world)
     ClickPolyline(point);
     return;
   }
+  if (m_tool == Tool::BEZIER)
+  {
+    m_pending.push_back(point);
+    return;
+  }
   if (m_pending.size() + 1 < ClicksNeeded())
   {
     m_pending.push_back(point);
@@ -111,6 +107,11 @@ void jcad::app::Editor::Finish()
   if (m_tool == Tool::POLYLINE && m_pending.size() >= 2)
   {
     m_model.AddPolyline(m_pending, false);
+    m_selection = Selection{};
+  }
+  if (m_tool == Tool::BEZIER && m_pending.size() >= 2)
+  {
+    m_model.AddCurve(geom::Bezier{ m_pending });
     m_selection = Selection{};
   }
   m_pending.clear();
@@ -174,6 +175,16 @@ jcad::app::Editor::PreviewShape jcad::app::Editor::Preview() const
                          true };
   case Tool::POLYGON:
     return PreviewShape{ RegularPolygonPoints(first, hover), true };
+  case Tool::CIRCLE:
+  case Tool::ELLIPSE:
+  case Tool::ARC:
+  case Tool::BEZIER:
+  {
+    const std::optional<geom::Curve> curve{ ToolCurve(hover) };
+    if (!curve)
+      return PreviewShape{ { first, hover }, false };
+    return PreviewShape{ geom::Tessellate(*curve, m_pick_radius / 4.0), false };
+  }
   default:
   {
     PreviewShape shape{ m_pending, false };
@@ -221,6 +232,12 @@ void jcad::app::Editor::Complete(Point2 point)
   case Tool::POLYGON:
     m_model.AddPolyline(RegularPolygonPoints(m_pending.front(), point), true);
     break;
+  case Tool::CIRCLE:
+  case Tool::ELLIPSE:
+  case Tool::ARC:
+    if (const std::optional<geom::Curve> curve{ ToolCurve(point) })
+      m_model.AddCurve(*curve);
+    break;
   default:
     JCAD_ASSERT(false, "tool does not complete on a click");
   }
@@ -230,7 +247,9 @@ void jcad::app::Editor::Complete(Point2 point)
 
 std::size_t jcad::app::Editor::ClicksNeeded() const noexcept
 {
-  return m_tool == Tool::POINT ? 1U : 2U;
+  if (m_tool == Tool::POINT)
+    return 1U;
+  return m_tool == Tool::ARC ? 3U : 2U;
 }
 
 std::optional<jcad::topo::VertexId> jcad::app::Editor::NearestVertex(Point2 world) const
@@ -253,12 +272,13 @@ std::optional<jcad::topo::EdgeId> jcad::app::Editor::NearestEdge(Point2 world) c
 {
   std::optional<topo::EdgeId> best;
   double best_distance{ m_pick_radius };
-  for (const model::GeometricModel::EdgeSegment& segment : m_model.EdgeSegments())
+  for (const model::GeometricModel::EdgeCurve& edge : m_model.EdgeCurves())
   {
-    const double distance{ DistanceToSegment(world, segment.start, segment.end) };
+    const double t{ geom::ClosestParam(edge.curve, world) };
+    const double distance{ Length(geom::Eval(edge.curve, t) - world) };
     if (distance <= best_distance)
     {
-      best = segment.edge;
+      best = edge.edge;
       best_distance = distance;
     }
   }
@@ -282,4 +302,39 @@ std::vector<jcad::app::Editor::Point2> jcad::app::Editor::RegularPolygonPoints(P
       Point2{ center.x + radius * std::cos(angle), center.y + radius * std::sin(angle) });
   }
   return points;
+}
+
+std::optional<jcad::geom::Curve> jcad::app::Editor::ToolCurve(Point2 last) const
+{
+  if (m_pending.empty())
+    return std::nullopt;
+  const Point2 first{ m_pending.front() };
+  const auto offset{ last - first };
+  switch (m_tool)
+  {
+  case Tool::CIRCLE:
+  {
+    const double radius{ Length(offset) };
+    if (radius <= 0.0)
+      return std::nullopt;
+    return geom::EllipticArc{ first, radius, radius, 0.0, 0.0, 2.0 * std::numbers::pi };
+  }
+  case Tool::ELLIPSE:
+    if (offset.x == 0.0 || offset.y == 0.0)
+      return std::nullopt;
+    return geom::EllipticArc{ first, std::abs(offset.x),    std::abs(offset.y), 0.0,
+                              0.0,   2.0 * std::numbers::pi };
+  case Tool::ARC:
+    if (m_pending.size() < 2)
+      return std::nullopt;
+    return geom::ArcThroughPoints(first, m_pending[1], last);
+  case Tool::BEZIER:
+  {
+    std::vector<Point2> points{ m_pending };
+    points.push_back(last);
+    return geom::Bezier{ std::move(points) };
+  }
+  default:
+    return std::nullopt;
+  }
 }

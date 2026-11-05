@@ -38,13 +38,17 @@ namespace
     ImGuiKey key;
   };
 
-  constexpr std::array<ToolButton, 6> TOOLS{ {
+  constexpr std::array<ToolButton, 10> TOOLS{ {
     { Tool::SELECT, "Select (S)", ImGuiKey_S },
     { Tool::POINT, "Point (P)", ImGuiKey_P },
     { Tool::LINE, "Line (L)", ImGuiKey_L },
     { Tool::POLYLINE, "Polyline (O)", ImGuiKey_O },
     { Tool::RECTANGLE, "Rectangle (R)", ImGuiKey_R },
     { Tool::POLYGON, "Polygon (G)", ImGuiKey_G },
+    { Tool::CIRCLE, "Circle (C)", ImGuiKey_C },
+    { Tool::ELLIPSE, "Ellipse (E)", ImGuiKey_E },
+    { Tool::ARC, "Arc, 3 points (A)", ImGuiKey_A },
+    { Tool::BEZIER, "Bezier (B)", ImGuiKey_B },
   } };
 
   struct SdlWindowDeleter
@@ -138,13 +142,18 @@ namespace
   void DrawModel(ImDrawList& draw, const Viewport& viewport, const Editor& editor)
   {
     const Editor::Selection& selection{ editor.GetSelection() };
-    for (const auto& segment : editor.Model().EdgeSegments())
+    // Half a pixel of chord error is invisible.
+    const double tolerance{ 0.5 / viewport.Scale() };
+    for (const auto& edge : editor.Model().EdgeCurves())
     {
-      const bool selected{ segment.edge == selection.edge };
-      draw.AddLine(ToScreen(viewport, segment.start),
-                   ToScreen(viewport, segment.end),
-                   selected ? SELECTED_COLOR : EDGE_COLOR,
-                   selected ? 3.0F : 1.5F);
+      const bool selected{ edge.edge == selection.edge };
+      const std::vector<ImVec2> points{ ToScreen(viewport,
+                                                 jcad::geom::Tessellate(edge.curve, tolerance)) };
+      draw.AddPolyline(points.data(),
+                       static_cast<int>(points.size()),
+                       selected ? SELECTED_COLOR : EDGE_COLOR,
+                       ImDrawFlags_None,
+                       selected ? 3.0F : 1.5F);
     }
     const jcad::topo::Topology& topology{ editor.Model().GetTopology() };
     for (const jcad::topo::VertexId vertex : topology.VertexIds())
@@ -252,7 +261,7 @@ namespace
                 topology.EdgeCount(),
                 topology.FaceCount() - 1);
     ImGui::TextDisabled(
-      "Right click / Enter: finish polyline\nMiddle or right drag: pan, wheel: zoom");
+      "Right click / Enter: finish polyline or Bezier\nMiddle or right drag: pan, wheel: zoom");
     ImGui::End();
   }
 

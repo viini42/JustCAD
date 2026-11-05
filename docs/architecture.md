@@ -110,12 +110,19 @@ Extra responsibilities of this layer: curve×curve intersection, snapping/tolera
 
 Implemented in M3 (`model/geometric_model.hpp`, straight edges only; every search is brute force for now):
 - `GeometricModel` owns the `Topology`, its `History` and the point store (`GeomPointId` → `Point2`). Points are append-only, so undo never invalidates them. It uses `DoubleKernel` through the `GeometricModel::Kernel` alias; making the model a template on the kernel is deferred until a second kernel exists.
-- Straight edges carry no curve: their geometry is the segment between their vertices, and `CurveId` stays invalid until M5.
+- In M3 straight edges carried no curve (`CurveId` invalid); since M5 every edge stores one (see below).
 - Inserting a segment works like this: each end snaps to a vertex within tolerance, splits the edge it lies on, or becomes an isolated vertex in the face that contains it (the innermost face, found with `LocateFace`). Existing vertices on the segment are collected, the edges it crosses properly (`geom::ProperCrossing`) are split, and the pieces between consecutive vertices are connected. Pieces that already exist are skipped, so overlapping collinear edges are never duplicated.
 - The corner at each end is the counter-clockwise sector, between two consecutive edges around the vertex, that holds the new direction. These are kernel orientation tests, with no angles.
 - When an edge closes a loop (MEF), the new face must be the counter-clockwise side. If it is not, the transaction is rolled back and the edge is re-added in the opposite direction. Inner loops of the old face that fall inside the new face are then moved there with `MoveRing`.
 - `RemoveEdge` merges the faces on its two sides. Removing a bridge of an outer loop keeps the part with positive area as the outer loop. Vertices left without edges are removed, and so are degree-2 vertices between collinear edges (JEKV).
 - Each public modifying call is one undo entry. The entity layer (§8) is not implemented yet.
+
+Extended in M5 to curves:
+- Every edge stores a `CurveId` whose curve runs along the edge's first half-edge; `CurveAlong(h)` reverses it for the twin. `AddCurve`, `AddCircle` and `AddEllipse` insert curves; a closed curve gets a middle vertex so no edge is a self-loop.
+- Insertion splits the new curve and every edge it meets, at crossings and at tangential contacts (§7). A contact or an inserted point closer than `CONTACT_SNAP_DISTANCE` (1e-6) to a vertex lands on that vertex: tangential contacts are only located to about the square root of the kernel tolerance, so an exact match would create near-duplicate vertices.
+- Edges around a vertex are ordered by a probe point a fixed distance (1e-3) along each curve, not by the tangent, so curves leaving a vertex tangent to each other (a circle touching a line) are still told apart.
+- Face areas and point location use polylines within `TESSELLATION_TOLERANCE` (1e-3) of the curves. Point location counts an edge that the kernel calls collinear with the point (a nearly horizontal edge at its height) when the whole edge lies east of it, which keeps the winding number balanced.
+- Overlapping curves (shared stretches of two arcs) are not supported.
 
 ## 7. Generic edge abstraction (geometry)
 
@@ -136,6 +143,8 @@ CurveKind Kind();
 ```
 
 **Arbitrary-degree Bézier** (settled): `Bezier { std::vector<Point2> control_points; }` with degree `n = control_points.size() − 1`. Evaluation and `Split(t)` via de Casteljau; the derivative is a degree `n−1` Bézier; bounds from the convex hull of the control points (conservative), refined with the roots of the derivative. Bézier×anything intersection by recursive subdivision with bbox culling (or *Bézier clipping*), finished by Newton refinement. Degree elevation is available for operations that need matching degrees.
+
+Implemented in M5 (`geom/curve.hpp`, `geom/curve_intersection.hpp`): `Curve = std::variant<LineSegment, Bezier, EllipticArc>` with `Eval`, `Tangent`, `Split`, `SubCurve`, `Reversed`, adaptive `Sample`/`Tessellate`, `Bounds`, `ClosestParam` and `ArcThroughPoints`. `Intersect(a, b, tolerance)` solves two segments exactly; for any other pair it walks both polylines, refines each crossing with Newton's method on a(s) = b(t), and, where two polyline pieces pass within the tolerance without crossing, looks for a tangential contact by minimizing the distance between the curves (accepted when it is within the kernel tolerance).
 
 - Intersections dispatched through a `(kind, kind)` table to specialized functions (analytic line×line, the rest via Bézier subdivision/tessellation + Newton refinement).
 - Alternative to virtual inheritance: `std::variant<LineSegment, Polyline, Bezier, Arc, ...>` + `std::visit` (no allocation, easier to serialize). **`variant` is recommended**; still open.
@@ -198,7 +207,11 @@ Each layer is a separate CMake library (`JustCad::Core`, `JustCad::Geom`, ...) w
 4. **M3** — geometric model with lines/polylines/rectangles/regular polygons (straight edges only) + line×line intersection → automatic regions.
 5. **M4** — minimal UI (SDL3 + Dear ImGui): draw, select, delete, show filled faces.
 6. **M5** — arbitrary-degree Bézier, arcs, circles, ellipses + curve intersections.
-7. **M6** — persistence (own JSON format), import/export (SVG/DXF), advanced queries.
+7. **M6** — persistence: save/open in an own JSON format.
+8. **M7** — command console (`PO` point, `PL` polyline, ...) and snaps (endpoint, midpoint, grid) with on/off toggles and a box-shaped tolerance.
+9. **M8** — entity selection, properties panel with editing of mutable properties (coordinates), color palette.
+10. **M9** — transformations: move, rotate, scale, each optionally as a copy.
+11. Later — import/export (SVG/DXF), advanced queries.
 
 ## 11. Decisions (2026-11-03)
 

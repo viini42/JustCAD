@@ -132,3 +132,36 @@ TEST_F(EditorTest, UndoDropsPendingShapeBeforeModelChanges)
   m_editor.Redo();
   EXPECT_EQ(Edges(), 1U);
 }
+
+TEST_F(EditorTest, CircleToolMakesClosedRegion)
+{
+  m_editor.SetTool(Tool::CIRCLE);
+  m_editor.Click(Point2{ 0.0, 0.0 });
+  m_editor.Hover(Point2{ 2.0, 0.0 });
+  EXPECT_GT(m_editor.Preview().points.size(), 8U);
+  m_editor.Click(Point2{ 2.0, 0.0 });
+  EXPECT_EQ(Edges(), 2U);
+  EXPECT_EQ(Faces(), 2U);
+}
+
+TEST_F(EditorTest, ArcToolNeedsThreeClicks)
+{
+  m_editor.SetTool(Tool::ARC);
+  m_editor.Click(Point2{ 1.0, 0.0 });
+  m_editor.Click(Point2{ 0.0, 1.0 });
+  EXPECT_EQ(Edges(), 0U);
+  m_editor.Click(Point2{ -1.0, 0.0 });
+  EXPECT_EQ(Edges(), 1U);
+}
+
+TEST_F(EditorTest, BezierToolAddsCurveOnFinish)
+{
+  m_editor.SetTool(Tool::BEZIER);
+  m_editor.Click(Point2{ 0.0, 0.0 });
+  m_editor.Click(Point2{ 1.0, 2.0 });
+  m_editor.Click(Point2{ 2.0, -2.0 });
+  m_editor.Click(Point2{ 3.0, 0.0 });
+  EXPECT_EQ(Edges(), 0U);
+  m_editor.Finish();
+  EXPECT_EQ(Edges(), 1U);
+}

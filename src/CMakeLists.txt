@@ -17,6 +17,8 @@ target_compile_features(JustCadCore PUBLIC cxx_std_23)
 target_link_libraries(JustCadCore PRIVATE JustCad::CompilationOptions)
 
 add_library(JustCadGeom STATIC
+    curve.cpp
+    curve_intersection.cpp
     double_kernel.cpp
     scoped_tolerance.cpp)
 add_library(JustCad::Geom ALIAS JustCadGeom)
