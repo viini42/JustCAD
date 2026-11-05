@@ -181,10 +181,12 @@ JustCAD/
     topo/      half-edge data structure, ids/pools, Validate()
     euler/     low-level (MVR, MEV, MEF, KEMR + inverses) and high-level (AddEdge, SplitEdge...) operators
     model/     GeometricModel (public API), entities, undo/redo
-    app/       window, rendering, drawing tools   (depends on model/ only)
+    app/       editor logic (tools, selection, snapping) and viewport, no UI toolkit (depends on model/ only)
   src/         flat: <name>.cpp, listed per layer library in src/CMakeLists.txt
   tests/       flat: test_<name>.cpp, one per source file, one executable per layer (GoogleTest)
 ```
+
+The window itself (`src/main.cpp`, M4) is the `JustCad` executable on top of `JustCad::App`. It owns the SDL3 window, draws the model with Dear ImGui's background draw list, and forwards input to `app::Editor`, so all interaction logic stays testable without a display. Faces are filled with `geom::Triangulate`, an ear-clipping triangulation that skips degenerate spikes, largest face first, so nested faces paint over their parent and holes need no special handling.
 
 Each layer is a separate CMake library (`JustCad::Core`, `JustCad::Geom`, ...) with explicit dependencies. Headers share one include root (`include/jcad`), so the rule that a lower layer never includes a higher one is checked in review rather than by the build. Naming conventions are in [style.md](style.md).
 
