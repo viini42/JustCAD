@@ -24,7 +24,7 @@ JustCadAddTests(CoreTests
 
 JustCadAddTests(GeomTests
     SOURCES test_vec2.cpp test_point2.cpp test_bbox.cpp test_double_kernel.cpp test_scoped_tolerance.cpp
-        test_polygon.cpp test_segment_crossing.cpp
+        test_polygon.cpp test_segment_crossing.cpp test_triangulate.cpp
     LIBS JustCad::Geom)
 
 JustCadAddTests(TopoTests
@@ -38,3 +38,7 @@ JustCadAddTests(EulerTests
 JustCadAddTests(ModelTests
     SOURCES test_geometric_model.cpp
     LIBS JustCad::Model)
+
+JustCadAddTests(AppTests
+    SOURCES test_editor.cpp test_viewport.cpp
+    LIBS JustCad::App)
