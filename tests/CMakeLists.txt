@@ -34,3 +34,7 @@ JustCadAddTests(TopoTests
 JustCadAddTests(EulerTests
     SOURCES test_euler_op.cpp test_history.cpp test_high_level_ops.cpp
     LIBS JustCad::Euler)
+
+JustCadAddTests(ModelTests
+    SOURCES test_geometric_model.cpp
+    LIBS JustCad::Model)
