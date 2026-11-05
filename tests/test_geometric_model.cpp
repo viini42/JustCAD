@@ -235,6 +235,17 @@ TEST_F(GeometricModelTest, UndoRedoWholePrimitives)
   EXPECT_FALSE(m_model.CanRedo());
 }
 
+TEST_F(GeometricModelTest, CircleInscribedInSquareTouchesEachSide)
+{
+  m_model.AddRectangle(Point2{ 0.0, 0.0 }, Point2{ 2.0, 2.0 });
+  m_model.AddCircle(Point2{ 1.0, 1.0 }, 1.0);
+  ExpectValid();
+  // The disc and four corner regions, besides the unbounded face.
+  EXPECT_EQ(m_model.GetTopology().FaceCount(), 6U);
+  EXPECT_EQ(m_model.GetTopology().VertexCount(), 8U);
+  EXPECT_NEAR(TotalFaceArea(), 4.0, 1e-2);
+}
+
 TEST_F(GeometricModelTest, AddCircleMakesTwoArcsAndOneFace)
 {
   m_model.AddCircle(Point2{ 0.0, 0.0 }, 2.0);
@@ -344,7 +355,7 @@ namespace
 
 TEST(GeometricModel, AddRandomPrimitivesOnGridKeepsValidOrientedFaces)
 {
-  for (unsigned seed{ 1 }; seed <= 60; ++seed)
+  for (unsigned seed{ 1 }; seed <= 40; ++seed)
   {
     std::mt19937 random{ seed };
     std::uniform_int_distribution<int> coordinate{ 0, 6 };

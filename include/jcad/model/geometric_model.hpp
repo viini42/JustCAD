@@ -126,7 +126,6 @@ namespace jcad::model
     void RemoveEdgeKeepingOuterLoops(topo::HalfEdgeId halfEdge);
     void CleanUpVertex(topo::VertexId vertex);
 
-    [[nodiscard]] std::optional<topo::VertexId> VertexAt(Point2 point) const;
     [[nodiscard]] std::optional<topo::VertexId> VertexNear(Point2 point) const;
     [[nodiscard]] bool
     HasEdgeLike(topo::VertexId from, topo::VertexId to, const geom::Curve& piece) const;

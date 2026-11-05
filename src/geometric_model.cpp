@@ -350,12 +350,12 @@ void jcad::model::GeometricModel::InsertCurve(const geom::Curve& curve)
 
 jcad::topo::VertexId jcad::model::GeometricModel::ResolvePoint(Point2 point)
 {
-  if (const std::optional<VertexId> existing{ VertexAt(point) })
+  if (const std::optional<VertexId> existing{ VertexNear(point) })
     return *existing;
   for (const EdgeId edge : m_topology.EdgeIds())
   {
     const double t{ geom::ClosestParam(CurveOf(edge), point) };
-    if (t > 0.0 && t < 1.0 && Kernel::Equal(geom::Eval(CurveOf(edge), t), point))
+    if (t > 0.0 && t < 1.0 && Length(geom::Eval(CurveOf(edge), t) - point) <= CONTACT_SNAP_DISTANCE)
       return SplitEdgeAt(edge, t, point);
   }
   return euler::AddIsolatedVertex(m_history, LocateFace(point), StorePoint(point));
@@ -385,7 +385,7 @@ jcad::model::GeometricModel::HitsAlong(const geom::Curve& curve,
       continue;
     const Point2 point{ PointOf(vertex) };
     const double t{ geom::ClosestParam(curve, point) };
-    if (Kernel::Equal(geom::Eval(curve, t), point))
+    if (Length(geom::Eval(curve, t) - point) <= CONTACT_SNAP_DISTANCE)
       hits.push_back(Hit{ t, vertex });
   }
   SplitCrossedEdges(curve, hits);
@@ -530,16 +530,6 @@ void jcad::model::GeometricModel::CleanUpVertex(topo::VertexId vertex)
   const LineSegment joined{ into_is_first ? LineSegment{ PointOf(a), PointOf(b) }
                                           : LineSegment{ PointOf(b), PointOf(a) } };
   euler::MergeEdges(m_history, into, StoreCurve(joined));
-}
-
-std::optional<jcad::topo::VertexId> jcad::model::GeometricModel::VertexAt(Point2 point) const
-{
-  for (const VertexId vertex : m_topology.VertexIds())
-  {
-    if (Kernel::Equal(PointOf(vertex), point))
-      return vertex;
-  }
-  return std::nullopt;
 }
 
 std::optional<jcad::topo::VertexId> jcad::model::GeometricModel::VertexNear(Point2 point) const
