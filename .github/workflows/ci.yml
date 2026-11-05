@@ -6,6 +6,14 @@ on:
   pull_request:
 
 jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        run: clang-format-18 --dry-run --Werror include/jcad/*/*.hpp src/*.cpp tests/*.cpp
+
   build:
     name: ${{ matrix.os }} / ${{ matrix.cxx }}
     runs-on: ${{ matrix.os }}
@@ -19,17 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure
+      - name: Build and test
         shell: bash
-        run: |
-          if [ "${{ matrix.cxx }}" = "cl" ]; then
-            cmake -S . -B build -DJUSTCAD_WARNINGS_AS_ERRORS=ON
-          else
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DJUSTCAD_WARNINGS_AS_ERRORS=ON
-          fi
-
-      - name: Build
-        run: cmake --build build --config Debug --parallel
-
-      - name: Test
-        run: ctest --test-dir build --build-config Debug --output-on-failure
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: cmake --workflow --preset dev

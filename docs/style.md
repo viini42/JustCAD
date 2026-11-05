@@ -61,8 +61,8 @@ Notes:
 - Recoverable errors: return `std::expected<T, E>`.
 - Constructors that cannot establish their invariant throw. Do not add static `Create` factories to avoid
   this. Exceptions are caught only at boundaries (`main`, thread entry points, UI event handlers).
-- Programmer errors and broken invariants: `JUSTCAD_ASSERT(cond)` / `JUSTCAD_ASSERT(cond, "fmt {}", arg)` from
-  `justcad/core/assert.hpp`. It is compiled out in release, so never put side effects in the condition.
+- Programmer errors and broken invariants: `JCAD_ASSERT(cond)` / `JCAD_ASSERT(cond, "fmt {}", arg)` from
+  `core/assert.hpp`. It is compiled out in release, so never put side effects in the condition.
 
 ## Files and headers
 
@@ -94,3 +94,10 @@ Notes:
 - `tests/test_<file>.cpp`, one per source file.
 - `TEST(Suite, MethodConditionExpected)`, where the suite is the class name (or the file's PascalCase
   name for free functions). No underscores: `TEST(NamesRegistry, CreateEntryLowercaseInputReturnsUppercase)`.
+
+## Layout, member order and formatting
+
+- File layout, class member order and the test file template: `.claude/skills/cpp-new-file/SKILL.md`.
+- Formatting: the repository's `.clang-format`, checked in CI with clang-format 18.
+- When the member order says "constants" before "type aliases" but a constant's type is one of the
+  aliases, the alias comes first (types before the members that use them).

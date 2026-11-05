@@ -1,0 +1,59 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Development (Debug, warnings as errors)",
+      "binaryDir": "${sourceDir}/build/dev",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "JCAD_BUILD_TESTS": "ON",
+        "JCAD_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release, warnings as errors",
+      "inherits": "dev",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev", "configurePreset": "dev", "configuration": "Debug" },
+    { "name": "release", "configurePreset": "release", "configuration": "Release" }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev",
+      "steps": [
+        { "type": "configure", "name": "dev" },
+        { "type": "build", "name": "dev" },
+        { "type": "test", "name": "dev" }
+      ]
+    },
+    {
+      "name": "release",
+      "steps": [
+        { "type": "configure", "name": "release" },
+        { "type": "build", "name": "release" },
+        { "type": "test", "name": "release" }
+      ]
+    }
+  ]
+}
