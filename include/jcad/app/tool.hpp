@@ -10,7 +10,11 @@ namespace jcad::app
     LINE,
     POLYLINE,
     RECTANGLE,
-    POLYGON
+    POLYGON,
+    CIRCLE,
+    ELLIPSE,
+    ARC,
+    BEZIER
   };
 
 } // namespace jcad::app

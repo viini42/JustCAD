@@ -2,10 +2,14 @@
 #include "model/geometric_model.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <gtest/gtest.h>
+#include <numbers>
 #include <random>
 #include <vector>
 
+using jcad::geom::EndPoint;
+using jcad::geom::StartPoint;
 using jcad::model::GeometricModel;
 using jcad::topo::FaceId;
 using jcad::topo::Topology;
@@ -183,10 +187,10 @@ TEST_F(GeometricModelTest, RemoveEdgeMergesFacesAndCleansVertices)
   m_model.AddRectangle(Point2{ 0.0, 0.0 }, Point2{ 2.0, 2.0 });
   m_model.AddLine(Point2{ 1.0, 0.0 }, Point2{ 1.0, 2.0 });
   ExpectCounts(6, 7, 2);
-  for (const GeometricModel::EdgeSegment& segment : m_model.EdgeSegments())
+  for (const GeometricModel::EdgeCurve& edge : m_model.EdgeCurves())
   {
-    if (segment.start.x == 1.0 && segment.end.x == 1.0)
-      m_model.RemoveEdge(segment.edge);
+    if (StartPoint(edge.curve).x == 1.0 && EndPoint(edge.curve).x == 1.0)
+      m_model.RemoveEdge(edge.edge);
   }
   ExpectCounts(4, 4, 1);
   EXPECT_DOUBLE_EQ(TotalFaceArea(), 4.0);
@@ -198,11 +202,12 @@ TEST_F(GeometricModelTest, RemoveEdgeOfBridgeKeepsOuterBoundary)
   m_model.AddRectangle(Point2{ 1.0, 1.0 }, Point2{ 2.0, 2.0 });
   m_model.AddLine(Point2{ 0.0, 1.0 }, Point2{ 1.0, 1.0 });
   ExpectValid();
-  for (const GeometricModel::EdgeSegment& segment : m_model.EdgeSegments())
+  for (const GeometricModel::EdgeCurve& edge : m_model.EdgeCurves())
   {
-    if (segment.start.y == 1.0 && segment.end.y == 1.0 &&
-        std::max(segment.start.x, segment.end.x) == 1.0)
-      m_model.RemoveEdge(segment.edge);
+    const Point2 start{ StartPoint(edge.curve) };
+    const Point2 end{ EndPoint(edge.curve) };
+    if (start.y == 1.0 && end.y == 1.0 && std::max(start.x, end.x) == 1.0)
+      m_model.RemoveEdge(edge.edge);
   }
   ExpectCounts(8, 8, 2);
   EXPECT_DOUBLE_EQ(TotalFaceArea(), 16.0);
@@ -230,6 +235,77 @@ TEST_F(GeometricModelTest, UndoRedoWholePrimitives)
   EXPECT_FALSE(m_model.CanRedo());
 }
 
+TEST_F(GeometricModelTest, AddCircleMakesTwoArcsAndOneFace)
+{
+  m_model.AddCircle(Point2{ 0.0, 0.0 }, 2.0);
+  ExpectCounts(2, 2, 1);
+  EXPECT_NEAR(TotalFaceArea(), 4.0 * std::numbers::pi, 1e-2);
+}
+
+TEST_F(GeometricModelTest, LineAcrossCircleSplitsItInTwo)
+{
+  m_model.AddCircle(Point2{ 0.0, 0.0 }, 1.0);
+  m_model.AddLine(Point2{ -2.0, 0.5 }, Point2{ 2.0, 0.5 });
+  ExpectValid();
+  EXPECT_EQ(m_model.GetTopology().FaceCount(), 3U);
+  EXPECT_NEAR(TotalFaceArea(), std::numbers::pi, 1e-2);
+}
+
+TEST_F(GeometricModelTest, OverlappingCirclesMakeThreeRegions)
+{
+  m_model.AddCircle(Point2{ 0.0, 0.0 }, 1.0);
+  m_model.AddCircle(Point2{ 1.0, 0.0 }, 1.0);
+  ExpectValid();
+  EXPECT_EQ(m_model.GetTopology().FaceCount(), 4U);
+  // Union of two unit circles at distance 1.
+  const double lens{ 2.0 * std::acos(0.5) - 0.5 * std::sqrt(3.0) };
+  EXPECT_NEAR(TotalFaceArea(), 2.0 * std::numbers::pi - lens, 2e-2);
+}
+
+TEST_F(GeometricModelTest, CircleInsideRectangleBecomesHole)
+{
+  m_model.AddRectangle(Point2{ -3.0, -3.0 }, Point2{ 3.0, 3.0 });
+  m_model.AddCircle(Point2{ 0.0, 0.0 }, 1.0);
+  ExpectValid();
+  const FaceId outer{ m_model.LocateFace(Point2{ 2.5, 2.5 }) };
+  EXPECT_EQ(m_model.GetTopology().FaceAt(outer).inner.size(), 1U);
+  EXPECT_NE(m_model.LocateFace(Point2{ 0.0, 0.0 }), outer);
+}
+
+TEST_F(GeometricModelTest, BezierAcrossRectangleSplitsFace)
+{
+  m_model.AddRectangle(Point2{ 0.0, 0.0 }, Point2{ 4.0, 2.0 });
+  m_model.AddCurve(
+    jcad::geom::Bezier{ { { -1.0, 1.0 }, { 1.0, 4.0 }, { 3.0, -2.0 }, { 5.0, 1.0 } } });
+  ExpectValid();
+  EXPECT_EQ(m_model.GetTopology().FaceCount(), 3U);
+  EXPECT_NEAR(TotalFaceArea(), 8.0, 1e-2);
+}
+
+TEST_F(GeometricModelTest, EllipseThroughRectangleCornerRegions)
+{
+  m_model.AddEllipse(jcad::geom::EllipticArc{ { 0.0, 0.0 }, 3.0, 1.0, 0.0, 0.0, 0.0 });
+  m_model.AddRectangle(Point2{ -1.0, -2.0 }, Point2{ 1.0, 2.0 });
+  ExpectValid();
+  EXPECT_EQ(m_model.GetTopology().FaceCount(), 6U);
+}
+
+TEST_F(GeometricModelTest, ArcClosedByLineMakesSegmentRegion)
+{
+  m_model.AddCurve(
+    jcad::geom::ArcThroughPoints(Point2{ 1.0, 0.0 }, Point2{ 0.0, 1.0 }, Point2{ -1.0, 0.0 }));
+  m_model.AddLine(Point2{ -1.0, 0.0 }, Point2{ 1.0, 0.0 });
+  ExpectCounts(2, 2, 1);
+  EXPECT_NEAR(TotalFaceArea(), std::numbers::pi / 2.0, 1e-2);
+}
+
+TEST_F(GeometricModelTest, RemoveArcOfCircleOpensRegion)
+{
+  m_model.AddCircle(Point2{ 0.0, 0.0 }, 1.0);
+  m_model.RemoveEdge(m_model.EdgeCurves().front().edge);
+  ExpectCounts(2, 1, 0);
+}
+
 namespace
 {
 
@@ -254,7 +330,9 @@ namespace
     for (const jcad::topo::LoopId loop : topology.LoopIds())
     {
       const double area{ model.LoopSignedArea(loop) };
-      if (topology.IsOuterLoop(loop) ? area <= 0.0 : area > 0.0)
+      // Hair-only loops enclose no area; allow for rounding in their sum.
+      constexpr double AREA_TOLERANCE{ 1e-9 };
+      if (topology.IsOuterLoop(loop) ? area <= AREA_TOLERANCE : area > AREA_TOLERANCE)
         return ::testing::AssertionFailure() << "loop " << loop.Value() << " has area " << area;
       if (!IsInsideItsFace(model, loop))
         return ::testing::AssertionFailure() << "loop " << loop.Value() << " lies outside its face";
@@ -266,7 +344,7 @@ namespace
 
 TEST(GeometricModel, AddRandomPrimitivesOnGridKeepsValidOrientedFaces)
 {
-  for (unsigned seed{ 1 }; seed <= 30; ++seed)
+  for (unsigned seed{ 1 }; seed <= 60; ++seed)
   {
     std::mt19937 random{ seed };
     std::uniform_int_distribution<int> coordinate{ 0, 6 };
@@ -278,9 +356,11 @@ TEST(GeometricModel, AddRandomPrimitivesOnGridKeepsValidOrientedFaces)
     GeometricModel model;
     for (int step{ 0 }; step < 25; ++step)
     {
-      const std::vector<GeometricModel::EdgeSegment> edges{ model.EdgeSegments() };
+      const std::vector<GeometricModel::EdgeCurve> edges{ model.EdgeCurves() };
       if (step % 5 == 4 && !edges.empty())
         model.RemoveEdge(edges[static_cast<std::size_t>(coordinate(random)) % edges.size()].edge);
+      else if (step % 7 == 6)
+        model.AddCircle(random_point(), 0.5 + coordinate(random) * 0.5);
       else if (step % 3 == 0)
         model.AddRectangle(random_point(), random_point());
       else
