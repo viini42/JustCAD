@@ -108,6 +108,15 @@ The functions the rest of the app uses; they translate primitives into topology:
 
 Extra responsibilities of this layer: curve×curve intersection, snapping/tolerance, queries (point in face, nearest edge, bbox), spatial index (brute force first, then grid/quadtree).
 
+Implemented in M3 (`model/geometric_model.hpp`, straight edges only; every search is brute force for now):
+- `GeometricModel` owns the `Topology`, its `History` and the point store (`GeomPointId` → `Point2`). Points are append-only, so undo never invalidates them. It uses `DoubleKernel` through the `GeometricModel::Kernel` alias; making the model a template on the kernel is deferred until a second kernel exists.
+- Straight edges carry no curve: their geometry is the segment between their vertices, and `CurveId` stays invalid until M5.
+- Inserting a segment works like this: each end snaps to a vertex within tolerance, splits the edge it lies on, or becomes an isolated vertex in the face that contains it (the innermost face, found with `LocateFace`). Existing vertices on the segment are collected, the edges it crosses properly (`geom::ProperCrossing`) are split, and the pieces between consecutive vertices are connected. Pieces that already exist are skipped, so overlapping collinear edges are never duplicated.
+- The corner at each end is the counter-clockwise sector, between two consecutive edges around the vertex, that holds the new direction. These are kernel orientation tests, with no angles.
+- When an edge closes a loop (MEF), the new face must be the counter-clockwise side. If it is not, the transaction is rolled back and the edge is re-added in the opposite direction. Inner loops of the old face that fall inside the new face are then moved there with `MoveRing`.
+- `RemoveEdge` merges the faces on its two sides. Removing a bridge of an outer loop keeps the part with positive area as the outer loop. Vertices left without edges are removed, and so are degree-2 vertices between collinear edges (JEKV).
+- Each public modifying call is one undo entry. The entity layer (§8) is not implemented yet.
+
 ## 7. Generic edge abstraction (geometry)
 
 Topology-independent interface:
