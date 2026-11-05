@@ -28,9 +28,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install libc++
-        if: matrix.cxx == 'clang++-18'
-        run: sudo apt-get update && sudo apt-get install -y libc++-18-dev libc++abi-18-dev
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev
+          if [ "${{ matrix.cxx }}" = "clang++-18" ]; then
+            sudo apt-get install -y libc++-18-dev libc++abi-18-dev
+          fi
 
       - name: Build and test
         shell: bash

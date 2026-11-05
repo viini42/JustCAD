@@ -4,7 +4,8 @@
 #   Topo  : half-edge data structure (knows nothing about geometry)
 #   Euler : low- and high-level Euler operators   -> Topo, Geom
 #   Model : geometric model (public API)          -> Euler, Geom
-#   App   : SDL3 + Dear ImGui UI                  -> Model        (milestone M4)
+#   App   : editor logic and view, no toolkit     -> Model
+#   JustCad (executable): SDL3 + Dear ImGui UI    -> App
 # Sources are listed explicitly; do not glob.
 set(JCAD_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/jcad)
 
@@ -46,3 +47,16 @@ add_library(JustCad::Model ALIAS JustCadModel)
 target_link_libraries(JustCadModel
     PUBLIC JustCad::Euler JustCad::Geom
     PRIVATE JustCad::CompilationOptions)
+
+add_library(JustCadApp STATIC
+    editor.cpp
+    viewport.cpp)
+add_library(JustCad::App ALIAS JustCadApp)
+target_link_libraries(JustCadApp
+    PUBLIC JustCad::Model
+    PRIVATE JustCad::CompilationOptions)
+
+if(JCAD_BUILD_GUI)
+    add_executable(JustCad main.cpp)
+    target_link_libraries(JustCad PRIVATE JustCad::App JustCad::ImGui JustCad::CompilationOptions)
+endif()

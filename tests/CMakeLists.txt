@@ -38,3 +38,7 @@ JustCadAddTests(EulerTests
 JustCadAddTests(ModelTests
     SOURCES test_geometric_model.cpp
     LIBS JustCad::Model)
+
+JustCadAddTests(AppTests
+    SOURCES test_editor.cpp test_viewport.cpp
+    LIBS JustCad::App)
