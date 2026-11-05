@@ -32,7 +32,9 @@ target_link_libraries(JustCadTopo
     PRIVATE JustCad::CompilationOptions)
 
 add_library(JustCadEuler STATIC
-    euler_op.cpp)
+    euler_op.cpp
+    high_level_ops.cpp
+    history.cpp)
 add_library(JustCad::Euler ALIAS JustCadEuler)
 target_link_libraries(JustCadEuler
     PUBLIC JustCad::Topo JustCad::Geom

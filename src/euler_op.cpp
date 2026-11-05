@@ -356,13 +356,15 @@ jcad::euler::MakeEdgeKillRing jcad::euler::Apply(topo::Topology& topology,
 jcad::euler::KillEdgeMakeRing jcad::euler::Apply(topo::Topology& topology,
                                                  const MakeEdgeKillRing& op)
 {
-  const LoopId loop{ LoopOf(topology, op.from) };
-  const LoopId ring{ LoopOf(topology, op.to) };
-  const FaceId face{ topology.LoopAt(loop).face };
-  JCAD_ASSERT(loop != ring, "MEKR needs two different loops; use MEF");
+  const LoopId from_loop{ LoopOf(topology, op.from) };
+  const LoopId to_loop{ LoopOf(topology, op.to) };
+  const FaceId face{ topology.LoopAt(from_loop).face };
+  JCAD_ASSERT(from_loop != to_loop, "MEKR needs two different loops; use MEF");
   JCAD_ASSERT(op.from.vertex != op.to.vertex, "MEKR cannot make a self-loop edge");
-  JCAD_ASSERT(topology.LoopAt(ring).face == face, "MEKR needs both loops in the same face");
-  JCAD_ASSERT(!topology.IsOuterLoop(ring), "the loop of `to` must be an inner loop");
+  JCAD_ASSERT(topology.LoopAt(to_loop).face == face, "MEKR needs both loops in the same face");
+  const bool keep_to{ topology.IsOuterLoop(to_loop) };
+  const LoopId loop{ keep_to ? to_loop : from_loop };
+  const LoopId ring{ keep_to ? from_loop : to_loop };
   // Read the corners' predecessors before relinking anything.
   const bool from_isolated{ !op.from.outgoing.Valid() };
   const bool to_isolated{ !op.to.outgoing.Valid() };
@@ -398,7 +400,77 @@ jcad::euler::KillEdgeMakeRing jcad::euler::Apply(topo::Topology& topology,
   AttachFirstEdge(topology, op.to.vertex, back);
   topology.DetachInnerLoop(face, ring);
   topology.RemoveLoop(ring);
-  return KillEdgeMakeRing{ out, ring };
+  // KEMR turns the part around its half-edge's target into the ring.
+  return KillEdgeMakeRing{ keep_to ? back : out, ring };
+}
+
+jcad::euler::JoinEdgeKillVertex jcad::euler::Apply(topo::Topology& topology,
+                                                   const SplitEdgeMakeVertex& op)
+{
+  const HalfEdgeId half_edge{ op.half_edge };
+  const HalfEdgeId twin{ Twin(half_edge) };
+  const VertexId end{ topology.Target(half_edge) };
+  const HalfEdgeId after{ Next(topology, half_edge) };
+  const HalfEdgeId before_twin{ Prev(topology, twin) };
+  const CurveId old_curve{ topology.EdgeAt(EdgeOf(half_edge)).curve };
+
+  const VertexId middle{ NewVertex(topology, op.new_vertex, Vertex{ {}, {}, op.point }) };
+  const HalfEdgeId split{ NewEdge(topology, op.new_half_edge, op.new_curve) };
+  const HalfEdgeId split_twin{ Twin(split) };
+  SetEnds(topology, split, middle, end);
+  topology.HalfEdgeAt(twin).origin = middle;
+  topology.HalfEdgeAt(split).loop = topology.HalfEdgeAt(half_edge).loop;
+  topology.HalfEdgeAt(split_twin).loop = topology.HalfEdgeAt(twin).loop;
+  // When `end` has no other edge, `after` is the twin and the new pair sits between.
+  const bool dangling_end{ after == twin };
+  Link(topology, half_edge, split);
+  Link(topology, split, dangling_end ? split_twin : after);
+  Link(topology, dangling_end ? split : before_twin, split_twin);
+  Link(topology, split_twin, twin);
+
+  topology.EdgeAt(EdgeOf(half_edge)).curve = op.curve;
+  topology.VertexAt(middle).outgoing = split;
+  ReplaceOutgoing(topology, end, twin, split_twin);
+  return JoinEdgeKillVertex{ half_edge, old_curve };
+}
+
+jcad::euler::SplitEdgeMakeVertex jcad::euler::Apply(topo::Topology& topology,
+                                                    const JoinEdgeKillVertex& op)
+{
+  const HalfEdgeId half_edge{ op.half_edge };
+  const HalfEdgeId twin{ Twin(half_edge) };
+  const VertexId middle{ topology.Target(half_edge) };
+  const HalfEdgeId joined{ Next(topology, half_edge) };
+  const HalfEdgeId joined_twin{ Twin(joined) };
+  JCAD_ASSERT(joined != twin, "vertex {} has a single edge", middle.Value());
+  JCAD_ASSERT(Next(topology, joined_twin) == twin,
+              "vertex {} has more than two edges",
+              middle.Value());
+  const VertexId end{ topology.Target(joined) };
+  JCAD_ASSERT(end != topology.HalfEdgeAt(half_edge).origin, "JEKV cannot make a self-loop edge");
+
+  const HalfEdgeId after{ Next(topology, joined) };
+  const HalfEdgeId before_twin{ Prev(topology, joined_twin) };
+  const CurveId old_curve{ topology.EdgeAt(EdgeOf(half_edge)).curve };
+  const CurveId joined_curve{ topology.EdgeAt(EdgeOf(joined)).curve };
+  const topo::GeomPointId point{ topology.VertexAt(middle).point };
+
+  const bool dangling_end{ after == joined_twin };
+  Link(topology, half_edge, dangling_end ? twin : after);
+  Link(topology, dangling_end ? half_edge : before_twin, twin);
+  topology.HalfEdgeAt(twin).origin = end;
+  Loop& loop{ topology.LoopAt(topology.HalfEdgeAt(half_edge).loop) };
+  if (loop.first == joined || loop.first == joined_twin)
+    loop.first = half_edge;
+  Loop& twin_loop{ topology.LoopAt(topology.HalfEdgeAt(twin).loop) };
+  if (twin_loop.first == joined || twin_loop.first == joined_twin)
+    twin_loop.first = twin;
+  ReplaceOutgoing(topology, end, joined_twin, twin);
+
+  topology.EdgeAt(EdgeOf(half_edge)).curve = op.curve;
+  topology.RemoveEdge(EdgeOf(joined));
+  topology.RemoveVertex(middle);
+  return SplitEdgeMakeVertex{ half_edge, point, old_curve, joined_curve, middle, joined };
 }
 
 jcad::euler::MoveRing jcad::euler::Apply(topo::Topology& topology, const MoveRing& op)

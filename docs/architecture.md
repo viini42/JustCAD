@@ -79,15 +79,18 @@ Rules:
 
 ## 5. Layer 3 — High-level Euler operators
 
-Compositions of low-level operators with modeling semantics, still purely topological (but may query geometry to decide which loop to insert into):
+Compositions of low-level operators with modeling semantics (`euler/high_level_ops.hpp`, M2). They stay purely topological: the caller, which knows the geometry (layer 4), chooses the corners and orientations and moves inner loops that a new face encloses.
 
-- `AddIsolatedVertex(p)`
-- `AddEdge(v1, v2, curve)` — picks MEV, MEF or MEKR depending on whether v1/v2 are connected, in the same loop, or in different loops.
-- `SplitEdge(e, t)` — inserts a vertex on an edge (splits the curve in two).
-- `MergeEdges(v)` — removes a degree-2 vertex (inverse of `SplitEdge`).
-- `RemoveEdge(e)` — picks KEV, KEF or KEMR.
-- `RemoveVertex(v)`.
-- Transactions: group several operators into a single undo entry.
+- `AddIsolatedVertex(face, point)` — MVR.
+- `AddDanglingEdge(corner, point, curve)` — MEV.
+- `AddEdge(from, to, curve)` — MEF if both corners are in the same loop (returns the new face), otherwise MEKR.
+- `SplitEdge(h, point, curves)` — SEMV; `MergeEdges(h, curve)` — JEKV, its inverse.
+- `RemoveEdge(h)` — KEMR if both sides are in the same loop, otherwise moves the killed face's inner loops out and applies KEF. Vertices stay.
+- `RemoveVertex(v)` — removes every edge of `v`, then the vertex (KEV for the last edge, or KVR).
+
+Two more low-level operators were added for this: `SEMV` (`SplitEdgeMakeVertex`) and `JEKV` (`JoinEdgeKillVertex`). MEKR kills whichever of its two loops is not the face's outer loop.
+
+**Transactions** (`euler/history.hpp`): `History` applies operators to a `Topology` and records their inverses. `Begin()`/`Commit()` nest, and only the outermost commit makes an undo entry; `Rollback()` undoes back to the matching `Begin()`; every high-level operator is one entry. `Undo()` replays an entry's inverses back to front and keeps their inverses as the redo entry, and because kills are undone with their original Ids, older entries stay valid.
 
 ## 6. Layer 4 — Geometric model (public API)
 

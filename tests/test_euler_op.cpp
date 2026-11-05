@@ -11,6 +11,7 @@
 using jcad::euler::Apply;
 using jcad::euler::Corner;
 using jcad::euler::EulerOp;
+using jcad::euler::JoinEdgeKillVertex;
 using jcad::euler::KillEdgeFace;
 using jcad::euler::KillEdgeMakeRing;
 using jcad::euler::KillEdgeVertex;
@@ -21,6 +22,8 @@ using jcad::euler::MakeEdgeKillRing;
 using jcad::euler::MakeEdgeVertex;
 using jcad::euler::MakeVertexRing;
 using jcad::euler::MoveRing;
+using jcad::euler::SplitEdgeMakeVertex;
+using jcad::topo::CurveId;
 using jcad::topo::FaceId;
 using jcad::topo::GeomPointId;
 using jcad::topo::HalfEdgeId;
@@ -189,6 +192,59 @@ TEST_F(EulerOpTest, MakeEdgeKillRingJoinsTwoSegments)
   EXPECT_EQ(m_topology.InnerLoopCount(), 1U);
 }
 
+TEST_F(EulerOpTest, MakeEdgeKillRingIntoOuterLoopKeepsOuterLoop)
+{
+  MakePath();
+  const KillEdgeFace kill{ Apply(
+    m_topology,
+    MakeEdgeFace{ CornerOf(m_topology, m_v2), CornerOf(m_topology, m_v0), {}, {}, {}, {} }) };
+  const LoopId outer{ m_topology.HalfEdgeAt(kill.half_edge).loop };
+  const FaceId triangle{ m_topology.LoopAt(outer).face };
+  const VertexId inside{ AddVertex(9) };
+  Apply(m_topology, MoveRing{ m_topology.VertexAt(inside).ring, triangle });
+  HalfEdgeId at_v0{};
+  for (const HalfEdgeId half_edge : m_topology.LoopHalfEdges(outer))
+  {
+    if (m_topology.HalfEdgeAt(half_edge).origin == m_v0)
+      at_v0 = half_edge;
+  }
+  ApplyAndCheckInverse(
+    m_topology,
+    MakeEdgeKillRing{ CornerOf(m_topology, inside), Corner{ m_v0, at_v0 }, {}, {} });
+  EXPECT_TRUE(m_topology.Contains(outer));
+  EXPECT_TRUE(m_topology.IsOuterLoop(outer));
+  EXPECT_TRUE(m_topology.FaceAt(triangle).inner.empty());
+}
+
+TEST_F(EulerOpTest, SplitEdgeMakeVertexInsertsVertex)
+{
+  MakePath();
+  const EulerOp op{
+    SplitEdgeMakeVertex{ m_e01, GeomPointId{ 7 }, CurveId{ 1 }, CurveId{ 2 }, {}, {} }
+  };
+  ApplyAndCheckInverse(m_topology, op);
+  EXPECT_EQ(m_topology.VertexCount(), 4U);
+  EXPECT_EQ(m_topology.EdgeCount(), 3U);
+  const VertexId middle{ m_topology.Target(m_e01) };
+  EXPECT_EQ(m_topology.VertexAt(middle).point, GeomPointId{ 7 });
+  EXPECT_EQ(m_topology.EdgeAt(jcad::topo::EdgeOf(m_e01)).curve, CurveId{ 1 });
+}
+
+TEST_F(EulerOpTest, SplitEdgeMakeVertexAtDanglingEndKeepsHair)
+{
+  MakePath();
+  ApplyAndCheckInverse(m_topology, SplitEdgeMakeVertex{ m_e12, GeomPointId{ 7 }, {}, {}, {}, {} });
+  EXPECT_EQ(m_topology.LoopHalfEdges(m_topology.HalfEdgeAt(m_e12).loop).size(), 6U);
+}
+
+TEST_F(EulerOpTest, JoinEdgeKillVertexRemovesMiddleVertex)
+{
+  MakePath();
+  ApplyAndCheckInverse(m_topology, JoinEdgeKillVertex{ m_e01, CurveId{ 5 } });
+  EXPECT_EQ(m_topology.VertexCount(), 2U);
+  EXPECT_EQ(m_topology.Target(m_e01), m_v2);
+}
+
 TEST_F(EulerOpTest, MoveRingIntoTriangleFace)
 {
   MakePath();
@@ -236,7 +292,7 @@ namespace
 
     std::optional<EulerOp> Pick(const Topology& topology)
     {
-      switch (Index(9))
+      switch (Index(11))
       {
       case 0:
         return MakeVertexRing{ Choose(topology.FaceIds()), GeomPointId{ m_point++ }, {}, {} };
@@ -260,6 +316,10 @@ namespace
           true);
       case 7:
         return PickKillEdge(topology, [&](HalfEdgeId h) { return SameLoop(topology, h); }, false);
+      case 8:
+        return PickSplitEdge(topology);
+      case 9:
+        return PickJoinEdges(topology);
       default:
         return PickMoveRing(topology);
       }
@@ -342,7 +402,7 @@ namespace
       const Corner to{ RandomCorner(topology, Choose(topology.VertexIds())) };
       const LoopId from_loop{ LoopOf(topology, from) };
       const LoopId to_loop{ LoopOf(topology, to) };
-      if (from.vertex == to.vertex || from_loop == to_loop || topology.IsOuterLoop(to_loop))
+      if (from.vertex == to.vertex || from_loop == to_loop)
         return std::nullopt;
       if (topology.LoopAt(from_loop).face != topology.LoopAt(to_loop).face)
         return std::nullopt;
@@ -382,6 +442,37 @@ namespace
       if (SameLoop(topology, chosen))
         return KillEdgeMakeRing{ chosen, {} };
       return std::nullopt;
+    }
+
+    std::optional<EulerOp> PickSplitEdge(const Topology& topology)
+    {
+      if (topology.EdgeCount() == 0)
+        return std::nullopt;
+      const HalfEdgeId half_edge{ Choose(AllHalfEdges(topology)) };
+      return SplitEdgeMakeVertex{
+        half_edge, GeomPointId{ m_point++ }, CurveId{ m_point }, CurveId{ m_point + 1 }, {}, {}
+      };
+    }
+
+    static bool CanJoin(const Topology& topology, HalfEdgeId halfEdge)
+    {
+      const HalfEdgeId joined{ topology.HalfEdgeAt(halfEdge).next };
+      if (joined == Twin(halfEdge) || topology.HalfEdgeAt(Twin(joined)).next != Twin(halfEdge))
+        return false;
+      return topology.Target(joined) != topology.HalfEdgeAt(halfEdge).origin;
+    }
+
+    std::optional<EulerOp> PickJoinEdges(const Topology& topology)
+    {
+      std::vector<HalfEdgeId> candidates;
+      for (const HalfEdgeId half_edge : AllHalfEdges(topology))
+      {
+        if (CanJoin(topology, half_edge))
+          candidates.push_back(half_edge);
+      }
+      if (candidates.empty())
+        return std::nullopt;
+      return JoinEdgeKillVertex{ Choose(candidates), CurveId{ m_point++ } };
     }
 
     std::optional<EulerOp> PickMoveRing(const Topology& topology)
