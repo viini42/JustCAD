@@ -43,8 +43,9 @@ cmake --workflow --preset release   # same in Release
 | Input | Action |
 |---|---|
 | `S` `P` `L` `O` `R` `G` | tools: select, point, line, polyline, rectangle, regular polygon |
+| `C` `E` `A` `B` | tools: circle (center, radius), ellipse (center, corner), arc (start, through, end), Bézier (control points) |
 | left click | place a point / pick (snaps to nearby vertices, then to the grid) |
-| right click or `Enter` | finish an open polyline; click its first vertex to close it |
+| right click or `Enter` | finish an open polyline or a Bézier; click a polyline's first vertex to close it |
 | `Esc` | cancel the shape in progress and the selection |
 | `Delete` / `Backspace` | remove the selected vertex or edge |
 | `Ctrl+Z`, `Ctrl+Y` / `Ctrl+Shift+Z` | undo, redo |
@@ -58,6 +59,9 @@ Regions closed by any mix of primitives are filled automatically.
 - **M1** half-edge structure, low-level Euler operators, `Validate()`
 - **M2** high-level operators, transactional undo/redo
 - **M3** geometric model with straight edges and automatic region detection
-- **M4** minimal UI (SDL3 + Dear ImGui) ← *current*
-- **M5** arbitrary-degree Bézier, arcs, circles, ellipses
-- **M6** persistence and import/export
+- **M4** minimal UI (SDL3 + Dear ImGui)
+- **M5** arbitrary-degree Bézier, arcs, circles, ellipses ← *current*
+- **M6** save/open (JSON)
+- **M7** command console and snaps (endpoint, midpoint, grid)
+- **M8** selection, properties panel, editing, color palette
+- **M9** move, rotate, scale (optionally as a copy)
