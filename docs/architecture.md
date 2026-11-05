@@ -19,7 +19,7 @@ A 2D modeler for drawing points, lines, polylines, Bézier curves and closed reg
  │    (AddEdge, SplitEdge, RemoveEdge, ...)      │
  ├──────────────────────────────────────────────┤
  │ 2. Low-level Euler operators                  │
- │    (MVFS/KVFS, MEV/KEV, MEF/KEF, KEMR/MEKR)   │
+ │    (MVR/KVR, MEV/KEV, MEF/KEF, KEMR/MEKR)     │
  ├──────────────────────────────────────────────┤
  │ 1. Half-edge topological data structure       │
  └──────────────────────────────────────────────┘
@@ -34,12 +34,21 @@ Entities live in pools/arrays and refer to each other through stable integer IDs
 
 | Entity | Main fields |
 |---|---|
-| `Vertex` | `HalfEdgeId outgoing`, `GeomPointId point` |
-| `HalfEdge` | `VertexId origin`, `HalfEdgeId twin, next, prev`, `LoopId loop`, `EdgeId edge` |
-| `Edge` | `HalfEdgeId half_edges[2]`, `CurveId curve`, curve direction relative to `half_edges[0]` |
-| `Loop` | `HalfEdgeId first`, `FaceId face`, `bool is_outer` |
-| `Face` | `LoopId outer`, `std::vector<LoopId> inner` (holes), attributes |
-| `Model` | sets of faces/vertices/edges; owns the unbounded face |
+| `Vertex` | `HalfEdgeId outgoing`, `LoopId ring` (only while it has no edges), `GeomPointId point` |
+| `HalfEdge` | `VertexId origin`, `HalfEdgeId next, prev`, `LoopId loop` |
+| `Edge` | `CurveId curve`; the curve runs along its first half-edge |
+| `Loop` | `HalfEdgeId first`, `VertexId isolated_vertex` (a ring around a lone vertex), `FaceId face` |
+| `Face` | `LoopId outer` (none for the unbounded face), `std::vector<LoopId> inner` (sorted) |
+| `Topology` | one `Pool` per entity kind; always owns the unbounded face |
+
+Implemented in M1 (`topo/topology.hpp`, 2026-11-05):
+- The half-edges of edge `e` have Ids `2e` and `2e + 1`: `Twin(h) = h ^ 1` and `EdgeOf(h) = h / 2` are computed, not stored. The first half-edge runs in the curve's direction.
+- A face lies on the left of its half-edges, so bounded outer loops run counter-clockwise and inner loops clockwise.
+- An isolated vertex is a loop with no half-edges that names the vertex (`Loop::isolated_vertex` ↔ `Vertex::ring`).
+- **No self-loop edges**: an edge always joins two different vertices, so a closed curve (circle, ellipse) is at least two edges. This removes every degenerate case from the operators.
+- `Pool::AllocateAt` recreates an entity under a given Id, so undoing a kill restores the exact Ids it removed and later undo records stay valid.
+- `operator==` is structural: which half-edge a loop starts at, or which one a vertex names as outgoing, does not matter.
+- `Validate()` returns `std::expected<void, std::string>` describing the first broken invariant.
 
 Decisions (settled 2026-11-03):
 - **Explicit unbounded face**: the plane itself is a face and every primitive lives inside it. Dangling lines, isolated points and regions are all handled the same way.
@@ -51,16 +60,21 @@ Decisions (settled 2026-11-03):
 
 A minimal and complete set (with inverses), in the style of Mäntylä:
 
-| Operator | Effect | Inverse |
+| Operator (record in `euler/euler_op.hpp`) | Effect | Inverse |
 |---|---|---|
-| `MVFS` | make vertex + face (first point; the face is the unbounded one) | `KVFS` |
-| `MEV` | make an edge and a new vertex from an existing vertex | `KEV` |
-| `MEF` | make an edge between two vertices of the same loop, splitting the face | `KEF` |
-| `KEMR` | kill an edge, making a ring (inner loop) | `MEKR` |
-| `MVR`/`KVR` (optional) | isolated vertex as a ring inside a face | — |
+| `MVR` `MakeVertexRing` | make an isolated vertex as a new inner loop of a face | `KVR` |
+| `MEV` `MakeEdgeVertex` | make an edge and a new vertex from a corner of an existing vertex | `KEV` |
+| `MEF` `MakeEdgeFace` | make an edge between two vertices of the same loop, splitting off a new face on the new half-edge's side | `KEF` |
+| `KEMR` `KillEdgeMakeRing` | kill an edge whose sides are in the same loop, making a ring (inner loop) | `MEKR` |
+| `MoveRing` | move an inner loop to another face (not an Euler operator; its own inverse) | `MoveRing` |
+
+There is no `MVFS`: a `Topology` is born with its unbounded face, and the first point is an `MVR`.
 
 Rules:
-- Each operator validates its preconditions, only changes IDs/links and **returns a record of its inverse**, the natural basis for undo/redo.
+- An operator is a plain record; `Apply(topology, op)` asserts its preconditions, only changes IDs/links and **returns the record of its inverse**, the natural basis for undo/redo. `EulerOp` is a `std::variant` of all the records.
+- Fields named `new_*` choose the Ids to create; left invalid, fresh Ids are allocated. Inverse records fill them in.
+- An edge is attached at a `Corner`: a vertex plus the outgoing half-edge the new edge goes just before (none for an isolated vertex).
+- MEF leaves every inner loop in the old face; the layer above moves the ones that geometrically fall in the new face with `MoveRing`. KEF requires the killed face to have no inner loops.
 - No geometry is computed here; operators receive ready-made geometry IDs.
 
 ## 5. Layer 3 — High-level Euler operators
@@ -86,7 +100,7 @@ The functions the rest of the app uses; they translate primitives into topology:
 | Open polyline | n vertices + n−1 line edges (see §7) |
 | Bézier | 2 vertices + 1 edge (`Bezier`) |
 | Rectangle / regular polygon | n vertices + n edges closing a face (`MEF` at the end) |
-| Circle / ellipse | 1 vertex + 1 closed edge (self-loop) `Arc/Ellipse`, or 2 vertices + 2 arcs **[assumption]** |
+| Circle / ellipse | 2 vertices + 2 arcs (self-loop edges are not allowed, §3) |
 | Region bounded by primitives | **planar arrangement**, detected automatically: when an edge is inserted, intersections with existing edges are computed, edges are split (`SplitEdge`) and the pieces inserted; faces appear automatically through `MEF` |
 
 Extra responsibilities of this layer: curve×curve intersection, snapping/tolerance, queries (point in face, nearest edge, bbox), spatial index (brute force first, then grid/quadtree).
@@ -153,7 +167,7 @@ JustCAD/
     core/      assert.hpp and shared utilities
     geom/      Point2, Vec2, BBox, kernel, Curve (variant), intersections
     topo/      half-edge data structure, ids/pools, Validate()
-    euler/     low-level (MVFS, MEV, MEF, KEMR + inverses) and high-level (AddEdge, SplitEdge...) operators
+    euler/     low-level (MVR, MEV, MEF, KEMR + inverses) and high-level (AddEdge, SplitEdge...) operators
     model/     GeometricModel (public API), entities, undo/redo
     app/       window, rendering, drawing tools   (depends on model/ only)
   src/         flat: <name>.cpp, listed per layer library in src/CMakeLists.txt

@@ -27,5 +27,9 @@ JustCadAddTests(GeomTests
     LIBS JustCad::Geom)
 
 JustCadAddTests(TopoTests
-    SOURCES test_id.cpp
+    SOURCES test_id.cpp test_pool.cpp test_half_edge.cpp test_topology.cpp
     LIBS JustCad::Topo)
+
+JustCadAddTests(EulerTests
+    SOURCES test_euler_op.cpp
+    LIBS JustCad::Euler)

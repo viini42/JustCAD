@@ -21,14 +21,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, cxx: g++-13 }
-          - { os: ubuntu-24.04, cxx: clang++-18 }
-          - { os: windows-2022, cxx: cl }
+          - { os: ubuntu-24.04, cxx: g++-13, cxxflags: "" }
+          # Clang 18 cannot use libstdc++'s <expected>, so it builds against libc++.
+          - { os: ubuntu-24.04, cxx: clang++-18, cxxflags: "-stdlib=libc++" }
+          - { os: windows-2022, cxx: cl, cxxflags: "" }
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install libc++
+        if: matrix.cxx == 'clang++-18'
+        run: sudo apt-get update && sudo apt-get install -y libc++-18-dev libc++abi-18-dev
 
       - name: Build and test
         shell: bash
         env:
           CXX: ${{ matrix.cxx }}
+          CXXFLAGS: ${{ matrix.cxxflags }}
         run: cmake --workflow --preset dev
