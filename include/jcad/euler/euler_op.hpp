@@ -91,8 +91,8 @@ namespace jcad::euler
 
   /**
    * MEKR: makes an edge joining two different loops of the same face, from `from`
-   * to `to`. The loop of `to` must be an inner loop; it is killed and merged into
-   * the loop of `from`.
+   * to `to`. One of the two loops is killed and merged into the other: the loop of
+   * `to`, unless it is the face's outer loop, in which case the loop of `from`.
    */
   struct MakeEdgeKillRing
   {
@@ -100,6 +100,31 @@ namespace jcad::euler
     Corner to{};
     topo::CurveId curve{};
     topo::HalfEdgeId new_half_edge{};
+  };
+
+  /**
+   * SEMV: splits `half_edge` (v1 -> v2) at a new vertex w. `half_edge` keeps v1 -> w
+   * and takes `curve`; the new half-edge runs w -> v2 and its edge takes `new_curve`.
+   */
+  struct SplitEdgeMakeVertex
+  {
+    topo::HalfEdgeId half_edge{};
+    topo::GeomPointId point{};
+    topo::CurveId curve{};
+    topo::CurveId new_curve{};
+    topo::VertexId new_vertex{};
+    topo::HalfEdgeId new_half_edge{};
+  };
+
+  /**
+   * JEKV: joins `half_edge` (v1 -> w) with the edge that follows it at w, which must
+   * have no other edge, and kills w. `half_edge` then runs v1 -> v2 and takes `curve`.
+   * v1 and v2 must differ.
+   */
+  struct JoinEdgeKillVertex
+  {
+    topo::HalfEdgeId half_edge{};
+    topo::CurveId curve{};
   };
 
   /** Moves an inner loop to another face. Not an Euler operator, but its own inverse. */
@@ -117,6 +142,8 @@ namespace jcad::euler
                                KillEdgeFace,
                                KillEdgeMakeRing,
                                MakeEdgeKillRing,
+                               SplitEdgeMakeVertex,
+                               JoinEdgeKillVertex,
                                MoveRing>;
 
   /** Performs the operator and returns its inverse. Preconditions are asserted. */
@@ -130,6 +157,8 @@ namespace jcad::euler
   MakeEdgeFace Apply(topo::Topology& topology, const KillEdgeFace& op);
   MakeEdgeKillRing Apply(topo::Topology& topology, const KillEdgeMakeRing& op);
   KillEdgeMakeRing Apply(topo::Topology& topology, const MakeEdgeKillRing& op);
+  JoinEdgeKillVertex Apply(topo::Topology& topology, const SplitEdgeMakeVertex& op);
+  SplitEdgeMakeVertex Apply(topo::Topology& topology, const JoinEdgeKillVertex& op);
   MoveRing Apply(topo::Topology& topology, const MoveRing& op);
 
   /** The loop a corner lies in: the loop of its outgoing half-edge, or the vertex's ring. */
