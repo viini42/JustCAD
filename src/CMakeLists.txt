@@ -23,10 +23,13 @@ target_link_libraries(JustCadGeom
     PUBLIC JustCad::Core
     PRIVATE JustCad::CompilationOptions)
 
-# Header-only for now: strong IDs. Topology does not depend on Geom.
-add_library(JustCadTopo INTERFACE)
+# Topology does not depend on Geom: geometry is referenced through opaque Ids.
+add_library(JustCadTopo STATIC
+    topology.cpp)
 add_library(JustCad::Topo ALIAS JustCadTopo)
-target_link_libraries(JustCadTopo INTERFACE JustCad::Core)
+target_link_libraries(JustCadTopo
+    PUBLIC JustCad::Core
+    PRIVATE JustCad::CompilationOptions)
 
 add_library(JustCadEuler INTERFACE)
 add_library(JustCad::Euler ALIAS JustCadEuler)
